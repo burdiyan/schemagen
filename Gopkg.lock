@@ -8,15 +8,6 @@
   version = "0.1.0"
 
 [[projects]]
-  name = "github.com/alanctgardner/gogen-avro"
-  packages = [
-    "generator",
-    "types"
-  ]
-  revision = "619db3c41ef0d2601747eece6db2244b4847b6d1"
-  version = "v5.0.1"
-
-[[projects]]
   name = "github.com/asaskevich/govalidator"
   packages = ["."]
   revision = "521b25f4b05fd26bec69d9dedeb8f9c9a83939a8"
@@ -128,7 +119,10 @@
 
 [[projects]]
   name = "gopkg.in/alanctgardner/gogen-avro.v5"
-  packages = ["generator"]
+  packages = [
+    "generator",
+    "types"
+  ]
   revision = "619db3c41ef0d2601747eece6db2244b4847b6d1"
   version = "v5.0.1"
 
@@ -141,6 +135,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "77a767bdb6a8395534856f761c1e17a02486136f3f6b8c8a10d035de97a8d160"
+  inputs-digest = "cd7a083929bdc57eb00f67caf95a22ba20aeb94361c099a04a6c021ef840e41f"
   solver-name = "gps-cdcl"
   solver-version = 1

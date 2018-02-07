@@ -13,9 +13,9 @@ import (
 	"strings"
 
 	"github.com/Landoop/schema-registry"
-	"github.com/alanctgardner/gogen-avro/generator"
-	"github.com/alanctgardner/gogen-avro/types"
 	"github.com/asaskevich/govalidator"
+	"gopkg.in/alanctgardner/gogen-avro.v5/generator"
+	"gopkg.in/alanctgardner/gogen-avro.v5/types"
 )
 
 const (
