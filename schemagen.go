@@ -102,6 +102,17 @@ func compileAvroSchema(schema string, cfg SchemaConfig, out string) error {
 		return err
 	}
 
+	for _, v := range namespace.Definitions {
+		rec, ok := v.(*types.RecordDefinition)
+		if !ok {
+			continue
+		}
+
+		filename := generator.ToSnake(rec.Name()) + ".go"
+
+		generateGoka(filename, rec, pkg)
+	}
+
 	if err := namespace.AddToPackage(pkg, codegenComment([]string{cfg.Package + ".avsc"}), false); err != nil {
 		return err
 	}
