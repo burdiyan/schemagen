@@ -1,4 +1,4 @@
-# Schemagen
+# Schemagen [![GoDoc](https://godoc.org/github.com/burdiyan/schemagen?status.svg)](https://godoc.org/github.com/burdiyan/schemagen)
 
 This is a tool that fetches Avro schemas from [Confluent Schema Registry](https://github.com/confluentinc/schema-registry) and compiles them to Go code.
 
