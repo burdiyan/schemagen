@@ -4,8 +4,6 @@ This is a tool that fetches Avro schemas from [Confluent Schema Registry](https:
 
 Code generation is entirely based on [gogen-avro](https://github.com/alanctgardner/gogen-avro).
 
-NOTICE: Directory `gogen-avro` holds a fork of original gogen-avro that allows to generate Goka codecs as well. It is only for storage, so the same package is also vendored by `dep`. That sucks, but there were no easy way to extend gogen-avro, and I don't want to maintain a separate fork.
-
 ## Installation
 
 Right now the only way to install `schemagen` is to build it from source:

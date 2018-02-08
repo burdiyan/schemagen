@@ -37,7 +37,7 @@
 
 [[constraint]]
   name = "gopkg.in/alanctgardner/gogen-avro.v5"
-  source = "github.com/burdiyan/schemagen/gogen-avro"
+  version = "5.0.1"
 
 [prune]
   non-go = true
