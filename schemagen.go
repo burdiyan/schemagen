@@ -65,26 +65,8 @@ func generateAvro(ctx context.Context, cfg Config) error {
 	}
 
 	for _, s := range cfg.Schemas {
-		if s.LocalPath != "" {
-			files, err := filepath.Glob(filepath.Join(s.LocalPath, "/*.avsc"))
-			if err != nil {
-				return errors.Wrapf(err, "unable to file avro schemas in local path: %s", s.LocalPath)
-			}
-
-			var schemas []string
-			for _, f := range files {
-				data, err := ioutil.ReadFile(f)
-				if err != nil {
-					return err
-				}
-
-				schemas = append(schemas, string(data))
-			}
-
-			if err := CompileAvroSchema(s.Package, cfg.OutputDir, schemas...); err != nil {
-				return err
-			}
-			continue
+		if err := os.Mkdir(path.Join(cfg.OutputDir, s.Package), 0755); err != nil && !os.IsExist(err) {
+			return err
 		}
 
 		var schema string
@@ -109,19 +91,42 @@ func generateAvro(ctx context.Context, cfg Config) error {
 			schema = sch.Schema
 		}
 
-		// We only store schema as JSON file if it is fetched from the registry.
-		if s.LocalPath == "" {
-			var b bytes.Buffer
-			if err := json.Indent(&b, []byte(schema), "", "    "); err != nil {
-				return err
-			}
-
-			if err := ioutil.WriteFile(path.Join(cfg.OutputDir, s.Package+".avsc"), b.Bytes(), 0755); err != nil {
-				return err
-			}
+		var b bytes.Buffer
+		if err := json.Indent(&b, []byte(schema), "", "    "); err != nil {
+			return err
 		}
 
-		if err := CompileAvroSchema(s.Package, cfg.OutputDir, schema); err != nil {
+		if err := ioutil.WriteFile(path.Join(cfg.OutputDir, s.Package, s.Package+".avsc"), b.Bytes(), 0755); err != nil {
+			return err
+		}
+	}
+
+	data, err := ioutil.ReadDir(cfg.OutputDir)
+	if err != nil {
+		return err
+	}
+
+	for _, d := range data {
+		if !d.IsDir() {
+			continue
+		}
+
+		files, err := filepath.Glob(filepath.Join(cfg.OutputDir, d.Name(), "/*.avsc"))
+		if err != nil {
+			return errors.Wrapf(err, "unable to find Avro schemas in %q", d.Name())
+		}
+
+		var schemas []string
+		for _, f := range files {
+			data, err := ioutil.ReadFile(f)
+			if err != nil {
+				return errors.Wrapf(err, "unable to read file %q", f)
+			}
+
+			schemas = append(schemas, string(data))
+		}
+
+		if err := CompileAvroSchema(d.Name(), cfg.OutputDir, schemas...); err != nil {
 			return err
 		}
 	}
@@ -153,12 +158,6 @@ func CompileAvroSchema(gopkg, out string, schemas ...string) error {
 		}
 
 		if err := namespace.AddToPackage(pkg, codegenComment([]string{gopkg + ".avsc"}), false); err != nil {
-			return err
-		}
-
-		target := path.Join(out, gopkg)
-
-		if err := os.Mkdir(target, 0755); err != nil && !os.IsExist(err) {
 			return err
 		}
 
