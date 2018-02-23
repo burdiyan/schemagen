@@ -14,6 +14,7 @@ import (
 
 	"github.com/Landoop/schema-registry"
 	"github.com/asaskevich/govalidator"
+	"github.com/pkg/errors"
 	"gopkg.in/alanctgardner/gogen-avro.v5/generator"
 	"gopkg.in/alanctgardner/gogen-avro.v5/types"
 )
@@ -64,35 +65,48 @@ func generateAvro(ctx context.Context, cfg Config) error {
 	}
 
 	for _, s := range cfg.Schemas {
+		if s.LocalPath != "" {
+			files, err := filepath.Glob(filepath.Join(s.LocalPath, "/*.avsc"))
+			if err != nil {
+				return errors.Wrapf(err, "unable to file avro schemas in local path: %s", s.LocalPath)
+			}
+
+			var schemas []string
+			for _, f := range files {
+				data, err := ioutil.ReadFile(f)
+				if err != nil {
+					return err
+				}
+
+				schemas = append(schemas, string(data))
+			}
+
+			if err := CompileAvroSchema(s.Package, cfg.OutputDir, schemas...); err != nil {
+				return err
+			}
+			continue
+		}
+
 		var schema string
 
-		if s.LocalPath != "" {
-			data, err := ioutil.ReadFile(s.LocalPath)
+		if s.Version == "latest" {
+			sch, err := client.GetLatestSchema(s.Subject)
+			if err != nil {
+				return err
+			}
+			schema = sch.Schema
+		} else {
+			v, err := strconv.Atoi(s.Version)
+			if err != nil {
+				return fmt.Errorf("version %q is not valid: %v", s.Version, err)
+			}
+
+			sch, err := client.GetSchemaBySubject(s.Subject, v)
 			if err != nil {
 				return err
 			}
 
-			schema = string(data)
-		} else {
-			if s.Version == "latest" {
-				sch, err := client.GetLatestSchema(s.Subject)
-				if err != nil {
-					return err
-				}
-				schema = sch.Schema
-			} else {
-				v, err := strconv.Atoi(s.Version)
-				if err != nil {
-					return fmt.Errorf("version %q is not valid: %v", s.Version, err)
-				}
-
-				sch, err := client.GetSchemaBySubject(s.Subject, v)
-				if err != nil {
-					return err
-				}
-
-				schema = sch.Schema
-			}
+			schema = sch.Schema
 		}
 
 		// We only store schema as JSON file if it is fetched from the registry.
@@ -107,7 +121,7 @@ func generateAvro(ctx context.Context, cfg Config) error {
 			}
 		}
 
-		if err := CompileAvroSchema(schema, s.Package, cfg.OutputDir); err != nil {
+		if err := CompileAvroSchema(s.Package, cfg.OutputDir, schema); err != nil {
 			return err
 		}
 	}
@@ -117,37 +131,43 @@ func generateAvro(ctx context.Context, cfg Config) error {
 
 // CompileAvroSchema compiles single Avro schema to Go code, using gopkg as a Go package name
 // and out as target directory for compiled code.
-func CompileAvroSchema(schema, gopkg string, out string) error {
+func CompileAvroSchema(gopkg, out string, schemas ...string) error {
 	pkg := generator.NewPackage(gopkg)
 	namespace := types.NewNamespace()
 
-	_, err := namespace.TypeForSchema([]byte(schema))
-	if err != nil {
-		return err
-	}
-
-	for _, v := range namespace.Definitions {
-		rec, ok := v.(*types.RecordDefinition)
-		if !ok {
-			continue
+	for _, schema := range schemas {
+		_, err := namespace.TypeForSchema([]byte(schema))
+		if err != nil {
+			return err
 		}
 
-		filename := generator.ToSnake(rec.Name()) + ".go"
+		for _, v := range namespace.Definitions {
+			rec, ok := v.(*types.RecordDefinition)
+			if !ok {
+				continue
+			}
 
-		generateGoka(filename, rec, pkg)
+			filename := generator.ToSnake(rec.Name()) + ".go"
+
+			generateGoka(filename, rec, pkg)
+		}
+
+		if err := namespace.AddToPackage(pkg, codegenComment([]string{gopkg + ".avsc"}), false); err != nil {
+			return err
+		}
+
+		target := path.Join(out, gopkg)
+
+		if err := os.Mkdir(target, 0755); err != nil && !os.IsExist(err) {
+			return err
+		}
+
+		if err := pkg.WriteFiles(path.Join(out, gopkg)); err != nil {
+			return err
+		}
 	}
 
-	if err := namespace.AddToPackage(pkg, codegenComment([]string{gopkg + ".avsc"}), false); err != nil {
-		return err
-	}
-
-	target := path.Join(out, gopkg)
-
-	if err := os.Mkdir(target, 0755); err != nil && !os.IsExist(err) {
-		return err
-	}
-
-	return pkg.WriteFiles(path.Join(out, gopkg))
+	return nil
 }
 
 // codegenComment generates a comment informing readers they are looking at
