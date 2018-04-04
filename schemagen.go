@@ -38,6 +38,8 @@ type Config struct {
 	Compile   bool           `yaml:"compile" valid:"required"`
 	OutputDir string         `yaml:"outputDir" valid:"required"`
 	Schemas   []SchemaConfig `yaml:"schemas" valid:"required"`
+
+	NoFetch bool `yaml:"noFetch"`
 }
 
 // Run uses the Config to download schemas and to compile them.
@@ -64,40 +66,42 @@ func generateAvro(ctx context.Context, cfg Config) error {
 		return err
 	}
 
-	for _, s := range cfg.Schemas {
-		if err := os.Mkdir(path.Join(cfg.OutputDir, s.Package), 0755); err != nil && !os.IsExist(err) {
-			return err
-		}
-
-		var schema string
-
-		if s.Version == "latest" {
-			sch, err := client.GetLatestSchema(s.Subject)
-			if err != nil {
-				return err
-			}
-			schema = sch.Schema
-		} else {
-			v, err := strconv.Atoi(s.Version)
-			if err != nil {
-				return fmt.Errorf("version %q is not valid: %v", s.Version, err)
-			}
-
-			sch, err := client.GetSchemaBySubject(s.Subject, v)
-			if err != nil {
+	if !cfg.NoFetch {
+		for _, s := range cfg.Schemas {
+			if err := os.Mkdir(path.Join(cfg.OutputDir, s.Package), 0755); err != nil && !os.IsExist(err) {
 				return err
 			}
 
-			schema = sch.Schema
-		}
+			var schema string
 
-		var b bytes.Buffer
-		if err := json.Indent(&b, []byte(schema), "", "    "); err != nil {
-			return err
-		}
+			if s.Version == "latest" {
+				sch, err := client.GetLatestSchema(s.Subject)
+				if err != nil {
+					return err
+				}
+				schema = sch.Schema
+			} else {
+				v, err := strconv.Atoi(s.Version)
+				if err != nil {
+					return fmt.Errorf("version %q is not valid: %v", s.Version, err)
+				}
 
-		if err := ioutil.WriteFile(path.Join(cfg.OutputDir, s.Package, s.Package+".avsc"), b.Bytes(), 0755); err != nil {
-			return err
+				sch, err := client.GetSchemaBySubject(s.Subject, v)
+				if err != nil {
+					return err
+				}
+
+				schema = sch.Schema
+			}
+
+			var b bytes.Buffer
+			if err := json.Indent(&b, []byte(schema), "", "    "); err != nil {
+				return err
+			}
+
+			if err := ioutil.WriteFile(path.Join(cfg.OutputDir, s.Package, s.Package+".avsc"), b.Bytes(), 0755); err != nil {
+				return err
+			}
 		}
 	}
 
