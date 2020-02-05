@@ -1,3 +1,9 @@
+**THIS PACKAGE IS DEPRECATED**
+
+Since I ended up ditching Avro in favor of Protobuf for everything I do, this repo is not mantained anymore. I would accept fixes and PRs if someone wanted to fix something.
+
+---
+
 # Schemagen [![GoDoc](https://godoc.org/github.com/burdiyan/schemagen?status.svg)](https://godoc.org/github.com/burdiyan/schemagen)
 
 This is a tool that fetches Avro schemas from [Confluent Schema Registry](https://github.com/confluentinc/schema-registry) and compiles them to Go code.
